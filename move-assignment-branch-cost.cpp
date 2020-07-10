@@ -119,6 +119,14 @@ namespace nomove {
     };
 }
 
+int count[4] = { 0, 0, 0, 0 }, total[4] = { 0, 0, 0, 0 };
+
+template <typename Callable>
+auto opaque_call [[gnu::noipa]](const Callable &callable)
+{
+    return callable();
+}
+
 int
 main()
 {
@@ -126,60 +134,87 @@ main()
     using namespace std::chrono;
 
     constexpr unsigned K = 5, N = 2'000'000;
-    int count[4] = { 0, 0, 0, 0 }, total[4] = { 0, 0, 0, 0 };
 
     for (int i = 0; i < K; ++i) {
+#if QA
+        opaque_call([]
         {
             using namespace not_noop;
             vector<A> v;
             for (auto i = 0u; i < N; ++i)
                 v.push_back(i);
-            auto t0 = steady_clock::now();
-            v.erase(v.begin());
-            auto t1 = steady_clock::now();
-            count[0] = (t1 - t0).count() / 1000;
+            auto td = opaque_call([&v]
+            {
+                auto t0 = steady_clock::now();
+                opaque_call([&v] { v.erase(v.begin()); });
+                auto t1 = steady_clock::now();
+                return t1 - t0;
+            });
+            count[0] = td.count() / 1000;
             cout << "\nnot_noop\t" << count[0];
             total[0] += count[0];
-        }
+        });
+#endif
 
+#if QB
+        opaque_call([]
         {
             using namespace noop;
             vector<A> v;
             for (auto i = 0u; i < N; ++i)
                 v.push_back(i);
-            auto t0 = steady_clock::now();
-            v.erase(v.begin());
-            auto t1 = steady_clock::now();
-            count[1] = int((t1 - t0).count() / 1000);
+            auto td = opaque_call([&v]
+            {
+                auto t0 = steady_clock::now();
+                opaque_call([&v] { v.erase(v.begin()); });
+                auto t1 = steady_clock::now();
+                return t1 - t0;
+            });
+            count[1] = int(td.count() / 1000);
             cout << "\nnoop    \t" << count[1] << "\t" << (1. * count[1] / count[0]);
             total[1] += count[1];
-        }
+        });
+#endif
 
+#if QC
+        opaque_call([]
         {
             using namespace weird;
             vector<A> v;
             for (auto i = 0u; i < N; ++i)
                 v.push_back(i);
-            auto t0 = steady_clock::now();
-            v.erase(v.begin());
-            auto t1 = steady_clock::now();
-            count[2] = int((t1 - t0).count() / 1000);
+            auto td = opaque_call([&v]
+            {
+                auto t0 = steady_clock::now();
+                opaque_call([&v] { v.erase(v.begin()); });
+                auto t1 = steady_clock::now();
+                return t1 - t0;
+            });
+            count[2] = int(td.count() / 1000);
             cout << "\nweird   \t" << count[2] << "\t" << (1. * count[2] / count[0]);
             total[2] += count[2];
-        }
+        });
+#endif
 
+#if QD
+        opaque_call([]
         {
             using namespace nomove;
             vector<A> v;
             for (auto i = 0u; i < N; ++i)
                 v.push_back(i);
-            auto t0 = steady_clock::now();
-            v.erase(v.begin());
-            auto t1 = steady_clock::now();
-            count[3] = int((t1 - t0).count() / 1000);
+            auto td = opaque_call([&v]
+            {
+                auto t0 = steady_clock::now();
+                opaque_call([&v] { v.erase(v.begin()); });
+                auto t1 = steady_clock::now();
+                return t1 - t0;
+            });
+            count[3] = int(td.count() / 1000);
             cout << "\nnomove  \t" << count[3] << "\t" << (1.*count[3]/count[0]) << "\n";
             total[3] += count[3];
-        }
+        });
+#endif
     }
 
     cout << "\n--- averages:";
